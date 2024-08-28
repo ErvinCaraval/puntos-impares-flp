@@ -1,0 +1,225 @@
+#lang eopl
+
+;1
+(define list-length
+  (lambda (lst)
+    (if (null? lst)
+        0
+        (+ 1 (list-length (cdr lst))))))
+
+(define valid-list?
+  (lambda (lst)
+    (cond
+      [(null? lst) #t]  ; Caso base: si la lista está vacía, es válida.
+      [(and (list? (car lst))  ; Si el primer elemento es una lista...
+            (= (list-length (car lst)) 2)  ; ... y tiene exactamente dos elementos...
+            (integer? (car (car lst)))  ; ... y el primer elemento de la sublista es un entero...
+            (integer? (cadr (car lst))))  ; ... y el segundo elemento de la sublista es un entero...
+       (valid-list? (cdr lst))]  ; ... entonces, continúa verificando el resto de la lista.
+      [else #f])))  ; Si no se cumplen las condiciones, la lista no es válida.
+
+(define (reverse-list lst)
+  (letrec ([reverse-helper
+            (lambda (lst accum)
+              (if (null? lst)
+                  accum
+                  (reverse-helper (cdr lst) (cons (car lst) accum))))])
+    (reverse-helper lst '())))
+
+(define invert
+  (lambda (lst pred?)
+    (if (not (valid-list? lst))
+        "Error: La lista debe estar compuesta únicamente por sublistas de exactamente dos enteros."
+        (letrec ([invert-list
+                  (lambda (lst)
+                    (if (null? lst)
+                        '()
+                        (let ([first (car lst)]
+                              [rest (cdr lst)])
+                          (if (and (pred? (car first))
+                                   (pred? (cadr first)))
+                              (cons (reverse-list first) (invert-list rest))
+                              (invert-list rest)))))])
+
+          (invert-list lst)))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;3
+(define list-set
+  (lambda (L n x pred?)
+    ;; Función auxiliar para modificar la lista en la posición n
+    (letrec ([modify
+              (lambda (lst index)
+                (cond
+                  [(null? lst) '()] ; Caso base: lista vacía
+                  [(= index 0) ; Si estamos en la posición n
+                   (if (pred? (car lst))
+                       (cons x (cdr lst)) ; Reemplazar el elemento en la posición n
+                       (cons (car lst) (modify (cdr lst) (- index 1))))] ; Si no, continuar recursivamente
+                  [else ; Si no estamos en la posición n
+                   (cons (car lst) (modify (cdr lst) (- index 1)))]))]) ; Continuar recursivamente con índice decrementado
+    
+      (modify L n)))) ;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;5
+(define list-index
+  (lambda (pred? L)
+    ;; Función auxiliar que recorre la lista con un índice
+    (letrec ([find-index
+              (lambda (lst index)
+                (cond
+                  [(null? lst) #f] ; Caso base: lista vacía, no se encontró ningún elemento
+                  [(pred? (car lst)) index] ; Si el predicado se cumple, retornar el índice
+                  [else (find-index (cdr lst) (+ index 1))]))]) ; Continuar con el siguiente elemento y aumentar el índice
+      (find-index L 0)))) ; Llamada inicial con índice 0
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;7
+
+;; Función auxiliar que toma un elemento de la primera lista y una lista de la segunda lista
+(define cons-all
+  (lambda (elem lst2)
+    (cond
+      [(null? lst2) '()] ; Caso base: lista vacía
+      [else
+       (cons (list elem (car lst2))
+             (cons-all elem (cdr lst2)))]))) ; Recursión para el resto de lst2
+
+
+;; Definición recursiva de `append` usando `lambda`
+(define m-append
+  (lambda (lst1 lst2)
+    (cond
+      [(null? lst1) lst2] ; Caso base: si la primera lista está vacía, retornar la segunda lista
+      [else
+       (cons (car lst1) ; Toma el primer elemento de la primera lista
+             (m-append (cdr lst1) lst2))]))) ; Recursión con el resto de la primera lista
+
+
+;; Función principal que calcula el producto cartesiano entre dos listas
+(define cartesian-product
+  (lambda (L1 L2)
+    (cond
+      [(null? L1) '()] ; Caso base: si la primera lista está vacía, el resultado es una lista vacía
+      [else
+       (m-append (cons-all (car L1) L2) ; Consigue el producto cartesiano de la cabeza de L1 con L2
+               (cartesian-product (cdr L1) L2))]))) ; Recursión para el resto de L1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;9
+
+(define (inversions L)
+  (letrec (
+           (list-refs
+            (lambda (lst idx)
+              (if (= idx 0)
+                  (car lst)
+                  (list-refs (cdr lst) (- idx 1)))))
+           (count-inversions-helper
+            (lambda (i j)
+              (cond
+                ((>= i (list-length L)) 0)
+                ((>= j (list-length L)) (count-inversions-helper (+ i 1) (+ i 2)))
+                ((> (list-refs L i) (list-refs L j))
+                 (+ 1 (count-inversions-helper i (+ j 1))))
+                (else (count-inversions-helper i (+ j 1)))))))
+    (count-inversions-helper 0 1)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;11
+(define (zip F L1 L2)
+  ((lambda (L1 L2)
+     (define (zip-rec L1 L2)
+       (if (null? L1)
+           '()
+           (cons (F (car L1) (car L2))
+                 (zip-rec (cdr L1) (cdr L2)))))
+     (zip-rec L1 L2)) L1 L2))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;13
+(define operate
+  (lambda (lrators lrands)
+    (letrec ((apply-ops
+              (lambda (ops nums)
+                (if (null? ops)
+                    (car nums)
+                    (apply-ops (cdr ops)
+                               (cons ((lambda (op a b) (op a b)) 
+                                      (car ops) (car nums) (cadr nums))
+                                     (cddr nums)))))))
+      (apply-ops lrators lrands))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;15
+
+(define (count-odd-and-even tree)
+  ;; Usamos letrec para definir funciones recursivas
+  (letrec ((count-nodes
+            (lambda (tree)
+              (if (null? tree)
+                  (list 0 0)  ;; Caso base: árbol vacío
+                  (let* ((value (car tree))
+                         (left (cadr tree))
+                         (right (caddr tree))
+                         (left-counts (count-nodes left))
+                         (right-counts (count-nodes right))
+                         (left-even (car left-counts))
+                         (left-odd (cadr left-counts))
+                         (right-even (car right-counts))
+                         (right-odd (cadr right-counts)))
+                    (list (count-even value left-even right-even)
+                          (count-odd value left-odd right-odd))))))
+          ;; Función auxiliar para contar pares
+          (count-even
+            (lambda (value left-even right-even)
+              (if (even? value)
+                  (+ left-even right-even 1)
+                  (+ left-even right-even))))
+          ;; Función auxiliar para contar impares
+          (count-odd
+            (lambda (value left-odd right-odd)
+              (if (odd? value)
+                  (+ left-odd right-odd 1)
+                  (+ left-odd right-odd)))))
+    ;; Obtener los resultados y convertirlos en una lista
+    (count-nodes tree)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;17
+
+
+(define (prod-scalar-matriz mat vec)
+  ;; Definir multiply-row usando lambda
+  (define multiply-row
+    (lambda (row vector)
+      (if (null? row)
+          '() ; Caso base: fila vacía
+          (cons (* (car row) (car vector))
+                ((lambda (rest-row rest-vector)
+                   (if (null? rest-row)
+                       '()
+                       (cons (* (car rest-row) (car rest-vector))
+                             ((lambda (rest-row rest-vector)
+                                (multiply-row rest-row rest-vector))
+                              (cdr rest-row) (cdr rest-vector)))))
+                 (cdr row) (cdr vector))))))
+
+  ;; Definir process-matrix usando lambda
+  (define process-matrix
+    (lambda (matrix)
+      (if (null? matrix)
+          '() ; Caso base: matriz vacía
+          (cons ((lambda (row)
+                   (multiply-row row vec))
+                 (car matrix))
+                ((lambda (rest-matrix)
+                   (process-matrix rest-matrix))
+                 (cdr matrix))))))
+
+  ;; Llamada inicial a process-matrix con la matriz completa
+  (process-matrix mat))
+

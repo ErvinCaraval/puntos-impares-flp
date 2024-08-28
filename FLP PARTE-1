@@ -1,22 +1,54 @@
 #lang eopl
 
 ;1
+
+;; Función list-length
+;; Propósito:
+;; list-length L -> n: Procedimiento que recibe una lista L y retorna la longitud de la lista.
+;;
+;; Gramática BNF
+;;    <list>  ::= '() | <element> <list>
+;; <element>  ::= <dato> | <list>
+;;    <dato>  ::= <number> | <symbol> 
+
 (define list-length
   (lambda (lst)
     (if (null? lst)
         0
         (+ 1 (list-length (cdr lst))))))
 
+;; Función valid-list?
+;; Propósito:
+;; valid-list? L -> #t | #f: Procedimiento que recibe una lista L y determina si es válida.
+;;                           Una lista válida está compuesta únicamente por sublistas de exactamente dos enteros.
+;;
+;; Gramática BNF
+;;    <list>       ::= '() | <sublist> <list>
+;; <sublist>       ::= <int> <int>
+;;    <int>        ::= <number>
+;;    <number>     ::= un número entero
+
 (define valid-list?
   (lambda (lst)
     (cond
-      [(null? lst) #t]  ; Caso base: si la lista está vacía, es válida.
-      [(and (list? (car lst))  ; Si el primer elemento es una lista...
-            (= (list-length (car lst)) 2)  ; ... y tiene exactamente dos elementos...
-            (integer? (car (car lst)))  ; ... y el primer elemento de la sublista es un entero...
-            (integer? (cadr (car lst))))  ; ... y el segundo elemento de la sublista es un entero...
-       (valid-list? (cdr lst))]  ; ... entonces, continúa verificando el resto de la lista.
-      [else #f])))  ; Si no se cumplen las condiciones, la lista no es válida.
+      [(null? lst) #t] 
+      [(and (list? (car lst))  
+            (= (list-length (car lst)) 2) 
+            (integer? (car (car lst)))  
+            (integer? (cadr (car lst)))) 
+       (valid-list? (cdr lst))]  
+      [else #f])))
+
+
+;; Función reverse-list
+;; Propósito:
+;; reverse-list L -> L': Procedimiento que recibe una lista L y retorna la lista L' con los elementos en orden inverso.
+;;
+;; Gramática BNF
+;;    <list>  ::= '() | <element> <list>
+;; <element>  ::= <dato> | <list>
+;;    <dato>  ::= <number> | <symbol> 
+
 
 (define (reverse-list lst)
   (letrec ([reverse-helper
@@ -26,6 +58,19 @@
                   (reverse-helper (cdr lst) (cons (car lst) accum))))])
     (reverse-helper lst '())))
 
+
+;; Función invert
+;; Propósito:
+;; invert L pred? -> L': Procedimiento que recibe una lista L y un predicado pred?. 
+;;                      Retorna una nueva lista L' donde cada sublista válida de L es invertida si ambos elementos 
+;;                      cumplen con el predicado pred?.
+;;
+;; Gramática BNF
+;;    <list>       ::= '() | <sublist> <list>
+;; <sublist>       ::= <int> <int>
+;;    <int>        ::= <number>
+;;    <number>     ::= un número entero
+
 (define invert
   (lambda (lst pred?)
     (if (not (valid-list? lst))
@@ -34,7 +79,7 @@
                   (lambda (lst)
                     (if (null? lst)
                         '()
-                        (let ([first (car lst)]
+                        (letrec ([first (car lst)]
                               [rest (cdr lst)])
                           (if (and (pred? (car first))
                                    (pred? (cadr first)))
@@ -42,74 +87,134 @@
                               (invert-list rest)))))])
 
           (invert-list lst)))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Función list-set
+;; Propósito:
+;; list-set L n x pred? -> L': Procedimiento que recibe una lista L, un índice n, un elemento x y un predicado pred?.
+;;                          Retorna una nueva lista L' donde el elemento en la posición n es reemplazado por x, 
+;;                          siempre y cuando el elemento en la posición n cumpla con el predicado pred?.
+;;
+;; Gramática BNF
+;;    <list>  ::= '() | <element> <list>
+;; <element>  ::= <dato> | <list>
+;;    <dato>  ::= <number> | <symbol> | <string> | <boolean>
 
 
 ;3
 (define list-set
   (lambda (L n x pred?)
-    ;; Función auxiliar para modificar la lista en la posición n
     (letrec ([modify
               (lambda (lst index)
                 (cond
-                  [(null? lst) '()] ; Caso base: lista vacía
-                  [(= index 0) ; Si estamos en la posición n
+                  [(null? lst) '()]
+                  [(= index 0) 
                    (if (pred? (car lst))
-                       (cons x (cdr lst)) ; Reemplazar el elemento en la posición n
-                       (cons (car lst) (modify (cdr lst) (- index 1))))] ; Si no, continuar recursivamente
-                  [else ; Si no estamos en la posición n
-                   (cons (car lst) (modify (cdr lst) (- index 1)))]))]) ; Continuar recursivamente con índice decrementado
+                       (cons x (cdr lst)) 
+                       (cons (car lst) (modify (cdr lst) (- index 1))))]
+                  [else 
+                   (cons (car lst) (modify (cdr lst) (- index 1)))]))]) 
     
       (modify L n)))) ;
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Función list-index
+;; Propósito:
+;; list-index pred? L -> n | #f: Procedimiento que recibe un predicado pred? y una lista L. 
+;;                          Retorna el índice n del primer elemento en la lista que cumple con el predicado pred?, 
+;;                          o #f si ningún elemento cumple con el predicado.
+;;
+;; Gramática BNF
+;;    <list>  ::= '() | <element> <list>
+;; <element>  ::= <dato> | <list>
+;;    <dato>  ::= <number> | <symbol> | <string> | <boolean>
+
 ;5
 (define list-index
   (lambda (pred? L)
-    ;; Función auxiliar que recorre la lista con un índice
+    
     (letrec ([find-index
               (lambda (lst index)
                 (cond
-                  [(null? lst) #f] ; Caso base: lista vacía, no se encontró ningún elemento
-                  [(pred? (car lst)) index] ; Si el predicado se cumple, retornar el índice
-                  [else (find-index (cdr lst) (+ index 1))]))]) ; Continuar con el siguiente elemento y aumentar el índice
-      (find-index L 0)))) ; Llamada inicial con índice 0
+                  [(null? lst) #f] 
+                  [(pred? (car lst)) index] 
+                  [else (find-index (cdr lst) (+ index 1))]))])
+      (find-index L 0)))) 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;7
 
-;; Función auxiliar que toma un elemento de la primera lista y una lista de la segunda lista
+;; Función cons-all
+;; Propósito:
+;; cons-all elem lst2 -> L': Procedimiento que toma un elemento `elem` y una lista `lst2`, 
+;;                          y retorna una nueva lista `L'` donde cada elemento de `lst2` está 
+;;                          emparejado con `elem` en una sublista.
+;;
+;; Gramática BNF
+;;    <list>    ::= '() | <element> <list>
+;; <element>    ::= <dato> | <list>
+;;    <dato>    ::= <number> | <symbol> 
+;; <sublist>    ::= (<element> <element>)
 (define cons-all
   (lambda (elem lst2)
     (cond
-      [(null? lst2) '()] ; Caso base: lista vacía
+      [(null? lst2) '()] 
       [else
        (cons (list elem (car lst2))
-             (cons-all elem (cdr lst2)))]))) ; Recursión para el resto de lst2
+             (cons-all elem (cdr lst2)))]))) 
+
+;; Función m-append
+;; Propósito:
+;; m-append lst1 lst2 -> L': Procedimiento que toma dos listas `lst1` y `lst2`, y retorna una nueva lista `L'` 
+;;                        que es la concatenación de `lst1` y `lst2`.
+;;
+;; Gramática BNF
+;;    <list>    ::= '() | <element> <list>
+;; <element>    ::= <dato> | <list>
+;;    <dato>    ::= <number> | <symbol> 
 
 
-;; Definición recursiva de `append` usando `lambda`
 (define m-append
   (lambda (lst1 lst2)
     (cond
-      [(null? lst1) lst2] ; Caso base: si la primera lista está vacía, retornar la segunda lista
+      [(null? lst1) lst2] 
       [else
-       (cons (car lst1) ; Toma el primer elemento de la primera lista
-             (m-append (cdr lst1) lst2))]))) ; Recursión con el resto de la primera lista
+       (cons (car lst1) 
+             (m-append (cdr lst1) lst2))]))) 
 
 
-;; Función principal que calcula el producto cartesiano entre dos listas
+;; Función cartesian-product
+;; Propósito:
+;; cartesian-product L1 L2 -> L': Procedimiento que toma dos listas `L1` y `L2` y 
+;;                              retorna el producto cartesiano entre ellas como una nueva lista `L'` de sublistas.
+;;
+;; Gramática BNF
+;;    <list>    ::= '() | <element> <list>
+;; <element>    ::= <dato> | <list>
+;;    <dato>    ::= <number> | <symbol> 
+;; <sublist>    ::= (<element> <element>)
+
 (define cartesian-product
   (lambda (L1 L2)
     (cond
-      [(null? L1) '()] ; Caso base: si la primera lista está vacía, el resultado es una lista vacía
+      [(null? L1) '()] 
       [else
-       (m-append (cons-all (car L1) L2) ; Consigue el producto cartesiano de la cabeza de L1 con L2
-               (cartesian-product (cdr L1) L2))]))) ; Recursión para el resto de L1
+       (m-append (cons-all (car L1) L2) 
+               (cartesian-product (cdr L1) L2))]))) 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;9
+
+;; Función inversions
+;; Propósito:
+;; inversions L -> n: Procedimiento que recibe una lista L y retorna el número de inversiones en la lista.
+;;                  Una inversión es un par de elementos en la lista tal que el elemento anterior es mayor que el elemento posterior.
+;;
+;; Gramática BNF
+;;    <list>  ::= '() | <element> <list>
+;; <element>  ::= <dato> | <list>
+;;    <dato>  ::= <number> | <symbol> 
+;; <number>  ::= un número entero
+
 
 (define (inversions L)
   (letrec (
@@ -128,8 +233,19 @@
                 (else (count-inversions-helper i (+ j 1)))))))
     (count-inversions-helper 0 1)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;11
+;; Función zip
+;; Propósito:
+;; zip F L1 L2 -> L: Procedimiento que toma una función F y dos listas L1 y L2. 
+;;                Retorna una nueva lista L donde cada elemento es el resultado de aplicar F 
+;;                a los elementos correspondientes de L1 y L2.
+;;
+;; Gramática BNF
+;;    <list>  ::= '() | <element> <list>
+;; <element>  ::= <dato> | <list>
+;;    <dato>  ::= <number> | <symbol>
+;;    <function> ::= <lambda-expression>
 (define (zip F L1 L2)
   ((lambda (L1 L2)
      (define (zip-rec L1 L2)
@@ -140,7 +256,19 @@
      (zip-rec L1 L2)) L1 L2))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Función operate
+;; Propósito:
+;; operate lrators lrands -> result: Procedimiento que toma dos listas, lrators y lrands.
+;;                           - lrators: Una lista de funciones (operadores).
+;;                           - lrands: Una lista de operandos.
+;;                           La función aplica secuencialmente cada operador a los operandos en lrands y retorna el resultado final.
+;;
+;; Gramática BNF
+;;    <list>  ::= '() | <element> <list>
+;; <element>  ::= <dato> | <list>
+;;    <dato>  ::= <number> | <symbol> 
+;; <function> ::= <lambda-expression>
+
 
 ;13
 (define operate
@@ -154,16 +282,57 @@
                                       (car ops) (car nums) (cadr nums))
                                      (cddr nums)))))))
       (apply-ops lrators lrands))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
 ;15
+;; Función count-odd-and-even
+;; Propósito:
+;; count-odd-and-even tree -> result: Procedimiento que toma un árbol binario representado como una lista anidada y cuenta la cantidad de nodos pares e impares en el árbol.
+;;
+;; Gramática BNF
+;;    <tree> ::= '() | (<element> <tree> <tree>)
+;; <element> ::= <number> | <symbol> | <string> | <boolean>
+
+
+;; Función count-nodes
+;; Propósito:
+;; count-nodes tree -> (list even-count odd-count): Contar nodos pares e impares en el árbol binario.
+;;
+;; Gramática BNF
+;;    <tree> ::= '() | (<element> <tree> <tree>)
+;; <element> ::= <number>
+
+;; Función count-even
+;; Propósito:
+;; count-even value left-even right-even -> even-count: Contar nodos pares en el árbol, sumando el valor actual.
+;;
+;; Gramática BNF
+;;    <value> ::= <number>
+;; <left-even> ::= <number>
+;; <right-even> ::= <number>
+
+
+;; Función count-odd
+;; Propósito:
+;; count-odd value left-odd right-odd -> odd-count: Contar nodos impares en el árbol, sumando el valor actual.
+;;
+;; Gramática BNF
+;;    <value> ::= <number>
+;; <left-odd> ::= <number>
+;; <right-odd> ::= <number>
+
+
+
+
 
 (define (count-odd-and-even tree)
-  ;; Usamos letrec para definir funciones recursivas
+
   (letrec ((count-nodes
             (lambda (tree)
               (if (null? tree)
-                  (list 0 0)  ;; Caso base: árbol vacío
-                  (let* ((value (car tree))
+                  (list 0 0)  
+                  (letrec ((value (car tree))
                          (left (cadr tree))
                          (right (caddr tree))
                          (left-counts (count-nodes left))
@@ -188,8 +357,29 @@
                   (+ left-odd right-odd)))))
     ;; Obtener los resultados y convertirlos en una lista
     (count-nodes tree)))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;17
+
+;; Función prod-scalar-matriz
+;; Propósito:
+;; prod-scalar-matriz mat vec -> result: Procedimiento que toma una matriz y un vector, y retorna una lista con el producto escalar de cada fila de la matriz con el vector.
+;;
+;; Gramática BNF
+;;    <mat> ::= '() | (<row> <mat>)
+;;    <row> ::= '() | (<element> <row>)
+;;    <vec> ::= '() | (<element> <vec>)
+;; <element> ::= <number> | <symbol> | <string> | <boolean>
+
+
+;; Función multiply-row
+;; Propósito:
+;; multiply-row row vector -> result: Multiplicar cada elemento de la fila por el correspondiente elemento del vector y devolver una lista de los productos.
+;;
+;; Gramática BNF
+;;    <row> ::= '() | (<element> <row>)
+;;    <vector> ::= '() | (<element> <vector>)
+;; <element> ::= <number>
+
 
 
 (define (prod-scalar-matriz mat vec)
@@ -197,7 +387,7 @@
   (define multiply-row
     (lambda (row vector)
       (if (null? row)
-          '() ; Caso base: fila vacía
+          '()
           (cons (* (car row) (car vector))
                 ((lambda (rest-row rest-vector)
                    (if (null? rest-row)
@@ -212,7 +402,7 @@
   (define process-matrix
     (lambda (matrix)
       (if (null? matrix)
-          '() ; Caso base: matriz vacía
+          '() ; 
           (cons ((lambda (row)
                    (multiply-row row vec))
                  (car matrix))
@@ -220,6 +410,6 @@
                    (process-matrix rest-matrix))
                  (cdr matrix))))))
 
-  ;; Llamada inicial a process-matrix con la matriz completa
+  
   (process-matrix mat))
 
